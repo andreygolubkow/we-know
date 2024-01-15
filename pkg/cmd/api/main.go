@@ -1,22 +1,21 @@
 package main
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"log"
+	"we-know/pkg/api/handlers"
+	"we-know/pkg/infrastructure/database"
 )
 
 func main() {
 	app := fiber.New()
 	app.Use(cors.New())
+	database.ConnectDB()
+	defer database.DB.Close()
 
 	api := app.Group("/api")
+	handlers.Register(api, database.DB)
 
-	// Test handler
-	api.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("App running")
-	})
-
-	log.Fatal(app.Listen(":1111"))
+	log.Fatal(app.Listen(":5000"))
 }

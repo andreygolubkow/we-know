@@ -30,7 +30,7 @@ func main() {
 	pool.Middleware((*jobs.Context).Log)
 	pool.Middleware((*jobs.Context).FindCustomer)
 
-	// Map the name of jobs to handler functions
+	// Map the name of jobs to handlers functions
 	pool.Job("send_welcome_email", (*jobs.Context).SendWelcomeEmail)
 
 	// Start processing jobs
