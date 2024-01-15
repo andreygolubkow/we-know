@@ -6,7 +6,6 @@ require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd // indirect
-	github.com/garyburd/redigo v1.6.4 // indirect
 	github.com/gocraft/web v0.0.0-20190207150652-9707327fb69b // indirect
 	github.com/gocraft/work v0.5.1 // indirect
 	github.com/gofiber/fiber/v2 v2.52.0 // indirect
