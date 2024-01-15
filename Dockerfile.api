@@ -4,7 +4,7 @@ FROM golang:1.21-alpine as build-env
 
 # Set environment variable
 ENV APP_NAME we-know-api
-ENV CMD_PATH /cmd/api/main.go
+ENV CMD_PATH /pkg/cmd/api/main.go
 
 # Copy application data into image
 COPY . $GOPATH/src/$APP_NAME
