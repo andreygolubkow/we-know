@@ -35,3 +35,6 @@ _testmain.go
 # OS Specific
 .DS_Store
 *.swp
+
+# Project dirs
+bin/
