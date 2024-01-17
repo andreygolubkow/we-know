@@ -2,7 +2,9 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"log"
 	"os"
@@ -38,29 +40,41 @@ func main() {
 			return
 		}
 	}
+
 	ref, err := repo.Head()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	branch := ref.Name().Short()
-	if branch != branchName {
-
-	}
-
-	log.Print("Branch:" + branch)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	branches, _ := repo.Branches()
-	err = branches.ForEach(func(ref *plumbing.Reference) error {
-		log.Println(ref.Name())
-		return nil
-	})
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+
+	log.Print(ref.Name())
+
+	// Fetch remote branches
+	fetchErr := repo.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		RefSpecs:   []config.RefSpec{"+refs/heads/*:refs/heads/*"},
+	})
+	if fetchErr != nil && fetchErr != git.NoErrAlreadyUpToDate {
+		fmt.Println(fetchErr)
+		os.Exit(1)
+	}
+
+	// Get the working directory for the repository
+	w, err := repo.Worktree()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	err = w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.ReferenceName("refs/heads/master"),
+	})
+
+	ref, err = repo.Head()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	log.Print(ref.Name())
 }
