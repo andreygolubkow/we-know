@@ -2,7 +2,10 @@ package historical_code_storage
 
 type HistoricalCodeStorage interface {
 	SetUp() error
-	Update() error
+	GetRootNode() *FileTreeNode
+}
 
-	Cleanup() error
+type FileTreeNode interface {
+	GetName() string
+	GetNext(ignoredFiles *[]string) []*FileTreeNode
 }

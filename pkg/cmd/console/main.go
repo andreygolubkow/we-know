@@ -3,28 +3,21 @@ package main
 import (
 	"log"
 	"os"
-	"we-know/pkg/infrastructure/historical_code_storage"
+	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
 
 const (
-	NothingToClone = "Nothing to clone"
+	WrongArgumentsException = "Nothing to clone"
 )
 
 func main() {
-	if len(os.Args) != 3 {
-		log.Fatal(NothingToClone)
-		return
-	}
-	repositoryLink := os.Args[1]
-	branch := os.Args[2]
-	workingDir, _ := os.Getwd()
-	tmpDir := workingDir + "/tmp"
+	repoUrl, repoBranch, repoDir := readArguments()
 
-	if err := os.MkdirAll(tmpDir, 0755); err != nil {
-		return
-	}
+	codeStorage, err := hs.NewGitStorage(repoUrl, repoBranch, repoDir)
 
-	codeStorage, err := historical_code_storage.NewGitStorage(repositoryLink, branch, tmpDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = codeStorage.SetUp()
 
@@ -33,22 +26,53 @@ func main() {
 		return
 	}
 
-	err = codeStorage.Update()
-
-	if err != nil {
-		log.Fatal(err)
+	var rootPtr = codeStorage.GetRootNode()
+	if rootPtr == nil {
+		log.Fatal("Root node is nil")
 		return
 	}
+	var root = *rootPtr
+	log.Print(root.GetName())
 
-	repo, err := historical_code_storage.SetUpRepository(tmpDir, repositoryLink, branch)
-	if err != nil {
-		log.Fatal(err)
+	var ignoreList = []string{".git", ".idea", ".github"}
+	Walk(rootPtr, func(node *hs.FileTreeNode) {
+		log.Print((*node).GetName())
+	}, &ignoreList)
+}
+
+type treeCallback func(node *hs.FileTreeNode)
+
+func Walk(root *hs.FileTreeNode, callback treeCallback, ignoredFiles *[]string) {
+	if root == nil {
+		return
+	}
+	var r = *root
+	nextNodes := r.GetNext(ignoredFiles)
+	for _, node := range nextNodes {
+		callback(node)
+		Walk(node, callback, ignoredFiles)
+	}
+}
+
+/*
+ */
+func readArguments() (repositoryUrl string, repoBranch string, repositoryDir string) {
+	if len(os.Args) != 3 {
+		log.Fatal(WrongArgumentsException)
+	}
+	repositoryUrl = os.Args[1]
+	branch := os.Args[2]
+	workingDir, _ := os.Getwd()
+	tmpDir := workingDir + "/tmp"
+
+	info, err := os.Stat(tmpDir)
+
+	if os.IsNotExist(err) || !info.IsDir() {
+		err := os.MkdirAll(tmpDir, 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	refName, err := historical_code_storage.CheckoutBranch(repo, branch)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Print(refName)
+	return repositoryUrl, branch, tmpDir
 }

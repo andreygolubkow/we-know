@@ -7,6 +7,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"os"
+	"path/filepath"
 )
 
 const RefFormat = "refs/heads/%s"
@@ -19,21 +20,8 @@ type GitSettings struct {
 
 type GitStorage struct {
 	settings GitSettings
-}
-
-func (g GitStorage) SetUp() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g GitStorage) Update() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g GitStorage) Cleanup() error {
-	//TODO implement me
-	panic("implement me")
+	repo     *git.Repository
+	root     *GitNode
 }
 
 func NewGitStorage(url string, branch string, dir string) (HistoricalCodeStorage, error) {
@@ -42,35 +30,57 @@ func NewGitStorage(url string, branch string, dir string) (HistoricalCodeStorage
 	}, nil
 }
 
-func SetUpRepository(tmpDir, repositoryLink, branch string) (rep *git.Repository, err error) {
-	rep, err = git.PlainOpen(tmpDir)
+func (g *GitStorage) SetUp() error {
+	repo, err := git.PlainOpen(g.settings.pathToDirectory)
 
+	if err != nil && !errors.Is(err, git.ErrRepositoryNotExists) {
+		return err
+	}
 	if errors.Is(err, git.ErrRepositoryNotExists) {
-		rep, err = git.PlainClone(tmpDir, false, &git.CloneOptions{
-			URL:           repositoryLink,
+		repo, err = git.PlainClone(g.settings.pathToDirectory, false, &git.CloneOptions{
+			URL:           g.settings.url,
 			Progress:      os.Stdout,
-			ReferenceName: plumbing.ReferenceName(fmt.Sprintf(RefFormat, branch)),
+			ReferenceName: plumbing.ReferenceName(fmt.Sprintf(RefFormat, g.settings.branch)),
 		})
-	}
 
-	return
-}
-
-func CheckoutBranch(repo *git.Repository, branch string) (branchName string, err error) {
-	ref, err := repo.Head()
-	if err != nil {
-		return
-	}
-
-	branchName = ref.Name().Short()
-	if branchName != branch {
-		err = FetchAndCheckout(repo, branch)
 		if err != nil {
-			return
+			return err
 		}
 	}
 
-	return
+	err = CheckoutBranch(repo, g.settings.branch)
+	if err != nil {
+		return err
+	}
+
+	g.repo = repo
+	g.root = NewGitNode(filepath.Base(g.settings.pathToDirectory), g.settings.pathToDirectory)
+	return nil
+}
+
+func (g *GitStorage) GetRootNode() *FileTreeNode {
+	if g.root == nil {
+		return nil
+	}
+
+	var node FileTreeNode = g.root
+	return &node
+}
+
+func CheckoutBranch(repo *git.Repository, branch string) error {
+	ref, err := repo.Head()
+	if err != nil {
+		return err
+	}
+
+	branchName := ref.Name().Short()
+	if branchName != branch {
+		err = FetchAndCheckout(repo, branch)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func FetchAndCheckout(repo *git.Repository, branch string) error {
