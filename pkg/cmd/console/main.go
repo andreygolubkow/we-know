@@ -35,22 +35,33 @@ func main() {
 	log.Print(root.GetName())
 
 	var ignoreList = []string{".git", ".idea", ".github"}
-	Walk(rootPtr, func(node *hs.FileTreeNode) {
-		log.Print((*node).GetName())
-	}, &ignoreList)
+	var pathBase = ""
+	Walk(rootPtr, func(node *hs.FileTreeNode, path string) {
+		//realPath := repoDir + string(os.PathSeparator) + path
+		blame, _ := codeStorage.GetEditorsByFile(path)
+		log.Print(blame)
+	}, pathBase, &ignoreList)
 }
 
-type treeCallback func(node *hs.FileTreeNode)
+type treeCallback func(node *hs.FileTreeNode, fullPath string)
 
-func Walk(root *hs.FileTreeNode, callback treeCallback, ignoredFiles *[]string) {
+func Walk(root *hs.FileTreeNode, callback treeCallback, pathBase string, ignoredFiles *[]string) {
 	if root == nil {
 		return
 	}
 	var r = *root
 	nextNodes := r.GetNext(ignoredFiles)
 	for _, node := range nextNodes {
-		callback(node)
-		Walk(node, callback, ignoredFiles)
+		var path = r.GetName()
+		if len(pathBase) > 0 {
+			path = pathBase + string(os.PathSeparator) + r.GetName()
+		}
+		var callbackPath = (*node).GetName()
+		if len(path) > 0 {
+			callbackPath = path + string(os.PathSeparator) + (*node).GetName()
+		}
+		callback(node, callbackPath)
+		Walk(node, callback, path, ignoredFiles)
 	}
 }
 

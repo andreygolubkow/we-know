@@ -7,7 +7,6 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"os"
-	"path/filepath"
 )
 
 const RefFormat = "refs/heads/%s"
@@ -54,7 +53,7 @@ func (g *GitStorage) SetUp() error {
 	}
 
 	g.repo = repo
-	g.root = NewGitNode(filepath.Base(g.settings.pathToDirectory), g.settings.pathToDirectory)
+	g.root = NewGitNode("", g.settings.pathToDirectory)
 	return nil
 }
 
@@ -103,4 +102,34 @@ func FetchAndCheckout(repo *git.Repository, branch string) error {
 	})
 
 	return err
+}
+
+func (g *GitStorage) GetEditorsByFile(filename string) (*map[string]int, string) {
+	head, err := g.repo.Head()
+
+	if err != nil {
+		return nil, err.Error()
+	}
+
+	commit, err := g.repo.CommitObject(head.Hash())
+	if err != nil {
+		return nil, err.Error()
+	}
+
+	blame, err := git.Blame(commit, filename)
+	if err != nil {
+		return nil, err.Error()
+	}
+
+	result := map[string]int{}
+
+	for _, v := range blame.Lines {
+		_, exists := result[v.Author]
+		if !exists {
+			result[v.Author] = 0
+		}
+		result[v.Author]++
+	}
+
+	return &result, ""
 }

@@ -3,9 +3,10 @@ package historical_code_storage
 import "os"
 
 type GitNode struct {
-	name string
-	path string
-	next []*FileTreeNode
+	name    string
+	path    string
+	next    []*FileTreeNode
+	editors *[]string
 }
 
 func NewGitNode(name string, path string) *GitNode {
@@ -24,6 +25,10 @@ func (g GitNode) GetNext(ignoredFiles *[]string) []*FileTreeNode {
 	g.next = g.Discover(ignoredFiles)
 
 	return g.next
+}
+
+func (g GitNode) SetEditors(editors *[]string) {
+	g.editors = editors
 }
 
 func (g GitNode) Discover(ignoredFiles *[]string) []*FileTreeNode {
