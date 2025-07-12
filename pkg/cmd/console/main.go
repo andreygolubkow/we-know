@@ -3,7 +3,11 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
+	"we-know/pkg/infrastructure/report"
+	"we-know/pkg/infrastructure/user"
+	"we-know/pkg/infrastructure/walker"
 )
 
 const (
@@ -34,34 +38,38 @@ func main() {
 	var root = *rootPtr
 	log.Print(root.GetName())
 
+	// Create a storage for file editors information
+	fileEditorsStorage := hs.NewFileEditorsStorage()
+
+	// Initialize user mapping
+	userMappingPath := user.GetDefaultMappingFilePath()
+	userMapping := user.NewUserMapping(userMappingPath)
+	err = userMapping.LoadMappingFile()
+	if err != nil {
+		log.Printf("Warning: Failed to load user mapping file: %v", err)
+		log.Printf("User mapping will not be applied to the report")
+		userMapping = nil
+	} else {
+		log.Printf("User mapping loaded successfully from: %s", userMappingPath)
+	}
+
+	// Populate the storage with file editors information
 	var ignoreList = []string{".git", ".idea", ".github"}
 	var pathBase = ""
-	Walk(rootPtr, func(node *hs.FileTreeNode, path string) {
-		//realPath := repoDir + string(os.PathSeparator) + path
-		blame, _ := codeStorage.GetEditorsByFile(path)
-		log.Print(blame)
-	}, pathBase, &ignoreList)
-}
+	walker.Crawl(rootPtr, codeStorage, fileEditorsStorage, pathBase, &ignoreList, userMapping)
 
-type treeCallback func(node *hs.FileTreeNode, fullPath string)
-
-func Walk(root *hs.FileTreeNode, callback treeCallback, pathBase string, ignoredFiles *[]string) {
-	if root == nil {
-		return
+	// Generate CSV report using the storage
+	reportsDir := filepath.Join(repoDir, "reports")
+	csvReporter := report.NewCSVReportWithType(reportsDir, userMapping, report.ReportByFileUsers)
+	reportPath, err := csvReporter.GenerateReportFromStorage(codeStorage, fileEditorsStorage)
+	if err != nil {
+		log.Printf("Failed to generate report: %v", err)
+	} else {
+		log.Printf("Report generated successfully: %s", reportPath)
 	}
-	var r = *root
-	nextNodes := r.GetNext(ignoredFiles)
-	for _, node := range nextNodes {
-		var path = r.GetName()
-		if len(pathBase) > 0 {
-			path = pathBase + string(os.PathSeparator) + r.GetName()
-		}
-		var callbackPath = (*node).GetName()
-		if len(path) > 0 {
-			callbackPath = path + string(os.PathSeparator) + (*node).GetName()
-		}
-		callback(node, callbackPath)
-		Walk(node, callback, path, ignoredFiles)
+	err = userMapping.SaveUnmappedUsers(filepath.Join(repoDir, "unmapped_users.csv"))
+	if err != nil {
+		log.Printf("Failed to save unmapped users: %v", err)
 	}
 }
 
