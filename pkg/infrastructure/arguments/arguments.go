@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"we-know/pkg/infrastructure/report"
 )
 
 const (
@@ -15,12 +16,14 @@ type Arguments struct {
 	RepositoryURL string
 	Branch        string
 	Path          string
-	// Add new fields here for future arguments
+	reportType    report.ReportType
 }
 
 // ReadArguments parses command line arguments and returns an Arguments struct
 func ReadArguments() (*Arguments, error) {
-	args := &Arguments{}
+	args := &Arguments{
+		reportType: report.ReportByFileUsers,
+	}
 
 	// Need at least repository URL
 	if len(os.Args) < 2 {
@@ -42,8 +45,17 @@ func ReadArguments() (*Arguments, error) {
 			switch arg {
 			case "--path":
 				args.Path = os.Args[i+1]
-				i++ // Skip the next argument since we consumed it
-			// Add new argument cases here
+				i++
+			case "--type":
+				typeStr := os.Args[i+1]
+				if typeStr == "user" {
+					args.reportType = report.ReportByFileUsers
+				} else if typeStr == "team" {
+					args.reportType = report.ReportByFileTeams
+				} else {
+					return nil, fmt.Errorf("unknown argument value: %s - %s. Possible values: user, team", arg, typeStr)
+				}
+				i++
 			default:
 				return nil, fmt.Errorf("unknown argument: %s", arg)
 			}
