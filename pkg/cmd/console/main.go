@@ -4,20 +4,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"we-know/pkg/infrastructure/arguments"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 	"we-know/pkg/infrastructure/report"
 	"we-know/pkg/infrastructure/user"
 	"we-know/pkg/infrastructure/walker"
 )
 
-const (
-	WrongArgumentsException = "Nothing to clone"
-)
-
 func main() {
-	repoUrl, repoBranch, repoDir := readArguments()
+	args, err := arguments.ReadArguments()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	codeStorage, err := hs.NewGitStorage(repoUrl, repoBranch, repoDir)
+	codeStorage, err := hs.NewGitStorage(args.RepositoryURL, args.Branch, args.Path)
 
 	if err != nil {
 		log.Fatal(err)
@@ -59,7 +59,15 @@ func main() {
 	walker.Crawl(rootPtr, codeStorage, fileEditorsStorage, pathBase, &ignoreList, userMapping)
 
 	// Generate CSV report using the storage
-	reportsDir := filepath.Join(repoDir, "reports")
+	workingDir, _ := os.Getwd()
+	reportsDir := filepath.Join(workingDir, "reports")
+
+	if err := os.MkdirAll(reportsDir, 0755); err != nil {
+		log.Printf("Warning: Failed to create reports directory: %v", err)
+		// Fall back to args.Path if we can't create the reports directory
+		reportsDir = filepath.Join(args.Path, "reports")
+	}
+
 	csvReporter := report.NewCSVReportWithType(reportsDir, userMapping, report.ReportByFileUsers)
 	reportPath, err := csvReporter.GenerateReportFromStorage(codeStorage, fileEditorsStorage)
 	if err != nil {
@@ -67,31 +75,9 @@ func main() {
 	} else {
 		log.Printf("Report generated successfully: %s", reportPath)
 	}
-	err = userMapping.SaveUnmappedUsers(filepath.Join(repoDir, "unmapped_users.csv"))
+
+	err = userMapping.SaveUnmappedUsers(filepath.Join(reportsDir, "unmapped_users.csv"))
 	if err != nil {
 		log.Printf("Failed to save unmapped users: %v", err)
 	}
-}
-
-/*
- */
-func readArguments() (repositoryUrl string, repoBranch string, repositoryDir string) {
-	if len(os.Args) != 3 {
-		log.Fatal(WrongArgumentsException)
-	}
-	repositoryUrl = os.Args[1]
-	branch := os.Args[2]
-	workingDir, _ := os.Getwd()
-	tmpDir := workingDir + "/tmp"
-
-	info, err := os.Stat(tmpDir)
-
-	if os.IsNotExist(err) || !info.IsDir() {
-		err := os.MkdirAll(tmpDir, 0755)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	return repositoryUrl, branch, tmpDir
 }

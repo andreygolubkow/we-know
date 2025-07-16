@@ -136,9 +136,18 @@ func (m *UserMapping) GetTeam(userID string) string {
 }
 
 // GetDefaultMappingFilePath returns the default path for the user mapping file
+// It creates the config directory if it doesn't exist
 func GetDefaultMappingFilePath() string {
 	workingDir, _ := os.Getwd()
-	return filepath.Join(workingDir, "user_mapping.csv")
+	configDir := filepath.Join(workingDir, "config")
+
+	// Create config directory if it doesn't exist
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		// If we can't create the directory, fall back to the working directory
+		return filepath.Join(workingDir, "user_mapping.csv")
+	}
+
+	return filepath.Join(configDir, "user_mapping.csv")
 }
 
 // SaveUnmappedUsers saves the list of unmapped users to a CSV file
@@ -150,8 +159,17 @@ func (m *UserMapping) SaveUnmappedUsers(filePath string) error {
 		return fmt.Errorf("failed to create directory for unmapped users file: %w", err)
 	}
 
-	// Create the file
-	file, err := os.Create(filePath)
+	_, err := os.Stat(filePath)
+	newFile := false
+	if os.IsNotExist(err) {
+		file, err := os.Create(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to create unmapped users file: %w", err)
+		}
+		newFile = true
+		defer file.Close()
+	}
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create unmapped users file: %w", err)
 	}
@@ -162,8 +180,10 @@ func (m *UserMapping) SaveUnmappedUsers(filePath string) error {
 	defer writer.Flush()
 
 	// Write header
-	if err := writer.Write([]string{"UserID"}); err != nil {
-		return fmt.Errorf("failed to write CSV header: %w", err)
+	if newFile {
+		if err := writer.Write([]string{"UserID"}); err != nil {
+			return fmt.Errorf("failed to write CSV header: %w", err)
+		}
 	}
 
 	// Write unmapped users
