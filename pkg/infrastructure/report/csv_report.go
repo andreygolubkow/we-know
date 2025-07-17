@@ -113,7 +113,8 @@ func (r *CSVReport) generateReportByFiles(writer *csv.Writer, storage *hs.FileEd
 	// Write CSV header
 	// First column is the file path, subsequent columns will be dynamically added for each user
 	header := []string{"File Path"}
-	userMap := make(map[string]int) // Map to track column indices for users
+	userMap := make(map[string]int)          // Map to track column indices for users
+	unmappedUserIDs := make(map[string]bool) // Track unmapped user IDs
 
 	// Collect all files and user data
 	fileData := make(map[string]map[string]int)
@@ -126,17 +127,29 @@ func (r *CSVReport) generateReportByFiles(writer *csv.Writer, storage *hs.FileEd
 			fileData[path] = *blame
 			// Track all unique users
 			for userID := range *blame {
-				if _, exists := userMap[userID]; !exists {
-					// If user mapping is available, use display name
-					displayName := userID
-					if r.UserMapping != nil {
-						displayName = r.UserMapping.GetDisplayName(userID)
+				// Check if user is mapped
+				isMapped := r.UserMapping != nil && r.UserMapping.GetUserInfo(userID) != nil
+
+				if isMapped {
+					if _, exists := userMap[userID]; !exists {
+						// If user mapping is available, use display name
+						displayName := r.UserMapping.GetDisplayName(userID)
+						userMap[userID] = len(userMap) + 1
+						header = append(header, displayName)
 					}
-					userMap[userID] = len(userMap) + 1
-					header = append(header, displayName)
+				} else {
+					// Mark as unmapped
+					unmappedUserIDs[userID] = true
 				}
 			}
 		}
+	}
+
+	// Add a single "Unmapped" column if there are any unmapped users
+	unmappedColumnIndex := -1
+	if len(unmappedUserIDs) > 0 {
+		unmappedColumnIndex = len(header)
+		header = append(header, "Unmapped")
 	}
 
 	// Write header
@@ -149,27 +162,30 @@ func (r *CSVReport) generateReportByFiles(writer *csv.Writer, storage *hs.FileEd
 		row := make([]string, len(header))
 		row[0] = filePath // File path
 
-		// Create a map to aggregate lines by display name
-		displayNameLines := make(map[string]int)
-
 		totalLines := 0
+		unmappedLines := 0
+
 		for _, lines := range userData {
 			totalLines += lines
 		}
 
-		// Aggregate lines by display name
+		// Fill in user data and calculate unmapped lines
 		for userID, lines := range userData {
-			displayName := userID
-			if r.UserMapping != nil {
-				displayName = r.UserMapping.GetDisplayName(userID)
+			// Check if user is mapped
+			isMapped := r.UserMapping != nil && r.UserMapping.GetUserInfo(userID) != nil
+
+			if isMapped {
+				colIndex := userMap[userID]
+				row[colIndex] = fmt.Sprintf("%.2f", float64(lines)/float64(totalLines)*100)
+			} else {
+				// Accumulate unmapped lines
+				unmappedLines += lines
 			}
-			displayNameLines[displayName] += lines
 		}
 
-		// Fill in user data
-		for userID, lines := range userData {
-			colIndex := userMap[userID]
-			row[colIndex] = fmt.Sprintf("%.2f", float64(lines)/float64(totalLines)*100)
+		// Add unmapped percentage if there are any unmapped users
+		if unmappedColumnIndex != -1 && totalLines > 0 {
+			row[unmappedColumnIndex] = fmt.Sprintf("%.2f", float64(unmappedLines)/float64(totalLines)*100)
 		}
 
 		if err := writer.Write(row); err != nil {
@@ -191,6 +207,7 @@ func (r *CSVReport) generateReportByFileTeams(writer *csv.Writer, storage *hs.Fi
 	// First column is the file path, subsequent columns will be dynamically added for each team
 	header := []string{"File Path"}
 	teamMap := make(map[string]int) // Map to track column indices for teams
+	hasUnmappedUsers := false       // Flag to track if there are any unmapped users
 
 	// Collect all files and user data
 	fileData := make(map[string]map[string]int)
@@ -201,17 +218,28 @@ func (r *CSVReport) generateReportByFileTeams(writer *csv.Writer, storage *hs.Fi
 		blame, _ := storage.GetFileEditors(path)
 		if blame != nil {
 			fileData[path] = *blame
-			// Track all unique teams
+			// Track all unique teams and check for unmapped users
 			for userID := range *blame {
-				team := r.UserMapping.GetTeam(userID)
-				if team != "" && team != "Unknown" {
+				userInfo := r.UserMapping.GetUserInfo(userID)
+				if userInfo != nil && userInfo.Team != "" && userInfo.Team != "Unknown" {
+					team := userInfo.Team
 					if _, exists := teamMap[team]; !exists {
 						teamMap[team] = len(teamMap) + 1
 						header = append(header, team)
 					}
+				} else {
+					// Mark that we have unmapped users
+					hasUnmappedUsers = true
 				}
 			}
 		}
+	}
+
+	// Add "Unmapped" column if there are any unmapped users
+	unmappedColumnIndex := -1
+	if hasUnmappedUsers {
+		unmappedColumnIndex = len(header)
+		header = append(header, "Unmapped")
 	}
 
 	// Write header
@@ -226,19 +254,34 @@ func (r *CSVReport) generateReportByFileTeams(writer *csv.Writer, storage *hs.Fi
 
 		// Create a map to aggregate lines by team
 		teamLines := make(map[string]int)
+		unmappedLines := 0
+		totalLines := 0
 
-		// Aggregate lines by team
+		// Calculate total lines
+		for _, lines := range userData {
+			totalLines += lines
+		}
+
+		// Aggregate lines by team and track unmapped lines
 		for userID, lines := range userData {
-			team := r.UserMapping.GetTeam(userID)
-			if team != "" && team != "Unknown" {
-				teamLines[team] += lines
+			userInfo := r.UserMapping.GetUserInfo(userID)
+			if userInfo != nil && userInfo.Team != "" && userInfo.Team != "Unknown" {
+				teamLines[userInfo.Team] += lines
+			} else {
+				// Accumulate unmapped lines
+				unmappedLines += lines
 			}
 		}
 
 		// Fill in team data
 		for team, lines := range teamLines {
 			colIndex := teamMap[team]
-			row[colIndex] = fmt.Sprintf("%d", lines)
+			row[colIndex] = fmt.Sprintf("%.2f", float64(lines)/float64(totalLines)*100)
+		}
+
+		// Add unmapped percentage if there are any unmapped users
+		if unmappedColumnIndex != -1 && totalLines > 0 {
+			row[unmappedColumnIndex] = fmt.Sprintf("%.2f", float64(unmappedLines)/float64(totalLines)*100)
 		}
 
 		if err := writer.Write(row); err != nil {
