@@ -27,10 +27,10 @@ func ReadArguments() (*Arguments, error) {
 
 	// Need at least repository URL
 	if len(os.Args) < 2 {
-		return nil, fmt.Errorf("repository URL is required")
+		return nil, fmt.Errorf("path is required")
 	}
 
-	args.RepositoryURL = os.Args[1]
+	args.Path = os.Args[1]
 
 	// Parse remaining arguments
 	for i := 2; i < len(os.Args); i++ {
@@ -43,8 +43,11 @@ func ReadArguments() (*Arguments, error) {
 			}
 
 			switch arg {
-			case "--path":
-				args.Path = os.Args[i+1]
+			case "--url":
+				args.RepositoryURL = os.Args[i+1]
+				i++
+			case "--branch":
+				args.Branch = os.Args[i+1]
 				i++
 			case "--type":
 				typeStr := os.Args[i+1]

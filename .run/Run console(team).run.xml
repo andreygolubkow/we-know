@@ -2,7 +2,7 @@
   <configuration default="false" name="Run console(team)" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="we-know" />
     <working_directory value="$PROJECT_DIR$/bin" />
-    <parameters value="https://github.com/takttusur/takt-media.git develop --type team" />
+    <parameters value="./tmp --type team" />
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
       <option name="IS_SUBST" value="false" />

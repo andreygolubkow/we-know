@@ -47,9 +47,11 @@ func (g *GitStorage) SetUp() error {
 		}
 	}
 
-	err = CheckoutBranch(repo, g.settings.branch)
-	if err != nil {
-		return err
+	if len(g.settings.branch) != 0 {
+		err = CheckoutBranch(repo, g.settings.branch)
+		if err != nil {
+			return err
+		}
 	}
 
 	g.repo = repo
