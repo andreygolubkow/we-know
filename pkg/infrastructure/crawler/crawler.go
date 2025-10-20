@@ -1,4 +1,4 @@
-package analyzer
+package crawler
 
 import (
 	hs "we-know/pkg/infrastructure/historical_code_storage"

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	an "we-know/pkg/infrastructure/analyzer"
+	an "we-know/pkg/infrastructure/crawler"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
 

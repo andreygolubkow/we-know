@@ -26,13 +26,6 @@ func NewFileTreeWalker() *DefaultFileTreeWalker {
 	}
 }
 
-// NewFileTreeWalkerWithPathBuilder creates a new DefaultFileTreeWalker with a custom PathBuilder
-func NewFileTreeWalkerWithPathBuilder(pathBuilder PathBuilder) *DefaultFileTreeWalker {
-	return &DefaultFileTreeWalker{
-		pathBuilder: pathBuilder,
-	}
-}
-
 // Walk traverses the file tree and calls the callback function for each node
 func (w *DefaultFileTreeWalker) Walk(root *hs.FileTreeNode, callback TreeCallback, pathBase string, ignoredFiles *[]string) error {
 	if root == nil {

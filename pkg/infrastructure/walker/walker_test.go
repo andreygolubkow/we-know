@@ -3,7 +3,7 @@ package walker
 import (
 	"errors"
 	"testing"
-	an "we-know/pkg/infrastructure/analyzer"
+	an "we-know/pkg/infrastructure/crawler"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
 
