@@ -1,25 +1,13 @@
 package walker
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	an "we-know/pkg/infrastructure/crawler"
-	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
-
-// MockFileTreeWalker is a mock implementation of FileTreeWalker
-type MockFileTreeWalker struct {
-	mock.Mock
-}
-
-func (m *MockFileTreeWalker) Walk(root *hs.FileTreeNode, callback TreeCallback, pathBase string, ignoredFiles *[]string) error {
-	args := m.Called(root, callback, pathBase, ignoredFiles)
-	return args.Error(0)
-}
 
 // MockCodeStorage is a mock implementation of CodeStorage
 type MockCodeStorageTestify struct {
@@ -55,26 +43,13 @@ func (m *MockUserMapperTestify) GetDisplayName(userID string) string {
 	return args.String(0)
 }
 
-func TestDefaultFileCrawler_Crawl(t *testing.T) {
+func TestDefaultFileCrawler_AnalyzeFiles(t *testing.T) {
 	// Arrange
-	mockWalker := new(MockFileTreeWalker)
 	mockCodeStorage := new(MockCodeStorageTestify)
 	mockEditorStorage := new(MockEditorStorageTestify)
 	mockUserMapper := new(MockUserMapperTestify)
 
-	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
-
-	// Create a mock root node
-	mockRoot := new(MockFileTreeNode)
-	var rootNode hs.FileTreeNode = mockRoot
-
-	// Set up walker to call the callback with a test path
-	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
-		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(TreeCallback)
-			callback(nil, "base/file.txt")
-		}).
-		Return(nil)
+	crawler := an.NewFileCrawler(mockCodeStorage, mockEditorStorage, mockUserMapper)
 
 	// Set up code storage to return editors for the test path
 	editors := map[string]int{
@@ -96,62 +71,43 @@ func TestDefaultFileCrawler_Crawl(t *testing.T) {
 		})
 
 	// Act
-	err := crawler.Crawl(&rootNode, "base", nil)
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
 
 	// Assert
-	assert.NoError(t, err, "Crawl should not return an error")
-	mockWalker.AssertExpectations(t)
+	assert.NoError(t, err, "AnalyzeFiles should not return an error")
 	mockCodeStorage.AssertExpectations(t)
 	mockEditorStorage.AssertExpectations(t)
 	mockUserMapper.AssertExpectations(t)
 }
 
-func TestDefaultFileCrawler_Crawl_WithError(t *testing.T) {
+func TestDefaultFileCrawler_AnalyzeFiles_WithStorageError(t *testing.T) {
 	// Arrange
-	mockWalker := new(MockFileTreeWalker)
 	mockCodeStorage := new(MockCodeStorageTestify)
 	mockEditorStorage := new(MockEditorStorageTestify)
 	mockUserMapper := new(MockUserMapperTestify)
 
-	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
+	crawler := an.NewFileCrawler(mockCodeStorage, mockEditorStorage, mockUserMapper)
 
-	// Create a mock root node
-	mockRoot := new(MockFileTreeNode)
-	var rootNode hs.FileTreeNode = mockRoot
-
-	// Set up walker to return an error
-	expectedErr := errors.New("test error")
-	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
-		Return(expectedErr)
+	// Code storage returns error message for the file
+	mockCodeStorage.On("GetEditorsByFile", "base/file.txt").Return(nil, "test error")
+	mockEditorStorage.On("SetFileEditors", "base/file.txt", (*map[string]int)(nil), "test error")
 
 	// Act
-	err := crawler.Crawl(&rootNode, "base", nil)
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
 
 	// Assert
-	assert.Equal(t, expectedErr, err, "Crawl should return the error from Walk")
-	mockWalker.AssertExpectations(t)
+	assert.NoError(t, err)
+	mockCodeStorage.AssertExpectations(t)
+	mockEditorStorage.AssertExpectations(t)
 }
 
-func TestDefaultFileCrawler_Crawl_WithoutUserMapping(t *testing.T) {
+func TestDefaultFileCrawler_AnalyzeFiles_WithoutUserMapping(t *testing.T) {
 	// Arrange
-	mockWalker := new(MockFileTreeWalker)
 	mockCodeStorage := new(MockCodeStorageTestify)
 	mockEditorStorage := new(MockEditorStorageTestify)
 
 	// Create crawler without user mapping
-	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, nil)
-
-	// Create a mock root node
-	mockRoot := new(MockFileTreeNode)
-	var rootNode hs.FileTreeNode = mockRoot
-
-	// Set up walker to call the callback with a test path
-	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
-		Run(func(args mock.Arguments) {
-			callback := args.Get(1).(TreeCallback)
-			callback(nil, "base/file.txt")
-		}).
-		Return(nil)
+	crawler := an.NewFileCrawler(mockCodeStorage, mockEditorStorage, nil)
 
 	// Set up code storage to return editors for the test path
 	editors := map[string]int{
@@ -164,11 +120,10 @@ func TestDefaultFileCrawler_Crawl_WithoutUserMapping(t *testing.T) {
 	mockEditorStorage.On("SetFileEditors", "base/file.txt", &editors, "")
 
 	// Act
-	err := crawler.Crawl(&rootNode, "base", nil)
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
 
 	// Assert
-	assert.NoError(t, err, "Crawl should not return an error")
-	mockWalker.AssertExpectations(t)
+	assert.NoError(t, err, "AnalyzeFiles should not return an error")
 	mockCodeStorage.AssertExpectations(t)
 	mockEditorStorage.AssertExpectations(t)
 }

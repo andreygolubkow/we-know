@@ -58,9 +58,13 @@ func main() {
 	var ignoreList = []string{".git", ".idea", ".github"}
 	var pathBase = ""
 	fileWalker := walker.NewFileTreeWalker()
-	crawler := an.NewFileCrawler(fileWalker, codeStorage, fileEditorsStorage, userMapping)
-	if err := crawler.Crawl(rootPtr, pathBase, &ignoreList); err != nil {
-		log.Printf("Warning: crawl encountered an error: %v", err)
+	files, err := fileWalker.CollectFiles(rootPtr, pathBase, &ignoreList)
+	if err != nil {
+		log.Printf("Warning: collecting files encountered an error: %v", err)
+	}
+	crawler := an.NewFileCrawler(codeStorage, fileEditorsStorage, userMapping)
+	if err := crawler.AnalyzeFiles(files); err != nil {
+		log.Printf("Warning: analysis encountered an error: %v", err)
 	}
 
 	// Generate CSV report using the storage

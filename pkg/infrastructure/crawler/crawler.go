@@ -1,9 +1,5 @@
 package crawler
 
-import (
-	hs "we-know/pkg/infrastructure/historical_code_storage"
-)
-
 // UserMapper defines the interface for mapping user IDs to display names
 // This is used to convert raw user identifiers to human-friendly names.
 type UserMapper interface {
@@ -25,42 +21,32 @@ type CodeStorage interface {
 	GetEditorsByFile(filename string) (*map[string]int, string)
 }
 
-// FileTreeWalker defines the interface for walking a file tree.
-// This local interface is intentionally decoupled from the walker package to avoid import cycles.
-type FileTreeWalker interface {
-	// Walk traverses the file tree and calls the callback function for each node
-	Walk(root *hs.FileTreeNode, callback func(node *hs.FileTreeNode, fullPath string) error, pathBase string, ignoredFiles *[]string) error
+// Analyzer defines behavior for analyzing a provided list of file paths using
+// the CodeStorage and persisting results to EditorStorage.
+type Analyzer interface {
+	// AnalyzeFiles processes the given list of file paths and stores editor info
+	AnalyzeFiles(files []string) error
 }
 
-// FileCrawler defines the interface for crawling a file tree and collecting editor information
-// It relies on a FileTreeWalker to enumerate files and then analyses them
-// using CodeStorage and stores results in EditorStorage.
-type FileCrawler interface {
-	// Crawl traverses the file tree and populates the storage with editor information
-	Crawl(root *hs.FileTreeNode, pathBase string, ignoredFiles *[]string) error
-}
-
-// DefaultFileCrawler is the default implementation of FileCrawler
+// DefaultFileCrawler (now analyzer) processes provided file paths.
 type DefaultFileCrawler struct {
-	walker      FileTreeWalker
 	codeStorage CodeStorage
 	storage     EditorStorage
 	userMapping UserMapper
 }
 
-// NewFileCrawler creates a new DefaultFileCrawler
-func NewFileCrawler(w FileTreeWalker, codeStorage CodeStorage, storage EditorStorage, userMapping UserMapper) *DefaultFileCrawler {
+// NewFileCrawler creates a new analyzer that works on a list of file paths.
+func NewFileCrawler(codeStorage CodeStorage, storage EditorStorage, userMapping UserMapper) *DefaultFileCrawler {
 	return &DefaultFileCrawler{
-		walker:      w,
 		codeStorage: codeStorage,
 		storage:     storage,
 		userMapping: userMapping,
 	}
 }
 
-// Crawl traverses the file tree and populates the storage with editor information
-func (c *DefaultFileCrawler) Crawl(root *hs.FileTreeNode, pathBase string, ignoredFiles *[]string) error {
-	return c.walker.Walk(root, func(node *hs.FileTreeNode, path string) error {
+// AnalyzeFiles iterates over file list and populates the storage with editor information
+func (c *DefaultFileCrawler) AnalyzeFiles(files []string) error {
+	for _, path := range files {
 		editors, errorMsg := c.codeStorage.GetEditorsByFile(path)
 
 		// If we have editors and user mapping, apply the mapping
@@ -70,9 +56,8 @@ func (c *DefaultFileCrawler) Crawl(root *hs.FileTreeNode, pathBase string, ignor
 		} else {
 			c.storage.SetFileEditors(path, editors, errorMsg)
 		}
-
-		return nil
-	}, pathBase, ignoredFiles)
+	}
+	return nil
 }
 
 // mapEditors maps user IDs to display names in the editors map

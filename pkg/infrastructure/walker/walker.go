@@ -12,6 +12,8 @@ type TreeCallback = func(node *hs.FileTreeNode, fullPath string) error
 type FileTreeWalker interface {
 	// Walk traverses the file tree and calls the callback function for each node
 	Walk(root *hs.FileTreeNode, callback TreeCallback, pathBase string, ignoredFiles *[]string) error
+	// CollectFiles traverses the file tree and returns a list of file full paths
+	CollectFiles(root *hs.FileTreeNode, pathBase string, ignoredFiles *[]string) ([]string, error)
 }
 
 // DefaultFileTreeWalker is the default implementation of FileTreeWalker
@@ -33,6 +35,20 @@ func (w *DefaultFileTreeWalker) Walk(root *hs.FileTreeNode, callback TreeCallbac
 	}
 
 	return w.walkNode(*root, callback, pathBase, ignoredFiles)
+}
+
+// CollectFiles traverses the file tree and returns a slice of full file paths
+func (w *DefaultFileTreeWalker) CollectFiles(root *hs.FileTreeNode, pathBase string, ignoredFiles *[]string) ([]string, error) {
+	files := make([]string, 0)
+	if root == nil {
+		return files, nil
+	}
+	// use Walk to collect paths
+	err := w.Walk(root, func(node *hs.FileTreeNode, fullPath string) error {
+		files = append(files, fullPath)
+		return nil
+	}, pathBase, ignoredFiles)
+	return files, err
 }
 
 // walkNode is a helper function for Walk that processes a single node and its children
