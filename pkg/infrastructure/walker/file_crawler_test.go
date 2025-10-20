@@ -16,7 +16,7 @@ type MockFileTreeWalker struct {
 }
 
 func (m *MockFileTreeWalker) Walk(root *hs.FileTreeNode, callback TreeCallback, pathBase string, ignoredFiles *[]string) error {
-	args := m.Called(root, mock.AnythingOfType("walker.TreeCallback"), pathBase, ignoredFiles)
+	args := m.Called(root, callback, pathBase, ignoredFiles)
 	return args.Error(0)
 }
 
@@ -68,7 +68,7 @@ func TestDefaultFileCrawler_Crawl(t *testing.T) {
 	var rootNode hs.FileTreeNode = mockRoot
 
 	// Set up walker to call the callback with a test path
-	mockWalker.On("Walk", &rootNode, mock.AnythingOfType("walker.TreeCallback"), "base", mock.Anything).
+	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
 		Run(func(args mock.Arguments) {
 			callback := args.Get(1).(TreeCallback)
 			callback(nil, "base/file.txt")
@@ -120,7 +120,7 @@ func TestDefaultFileCrawler_Crawl_WithError(t *testing.T) {
 
 	// Set up walker to return an error
 	expectedErr := errors.New("test error")
-	mockWalker.On("Walk", &rootNode, mock.AnythingOfType("walker.TreeCallback"), "base", mock.Anything).
+	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
 		Return(expectedErr)
 
 	// Act
@@ -145,7 +145,7 @@ func TestDefaultFileCrawler_Crawl_WithoutUserMapping(t *testing.T) {
 	var rootNode hs.FileTreeNode = mockRoot
 
 	// Set up walker to call the callback with a test path
-	mockWalker.On("Walk", &rootNode, mock.AnythingOfType("walker.TreeCallback"), "base", mock.Anything).
+	mockWalker.On("Walk", &rootNode, mock.Anything, "base", mock.Anything).
 		Run(func(args mock.Arguments) {
 			callback := args.Get(1).(TreeCallback)
 			callback(nil, "base/file.txt")

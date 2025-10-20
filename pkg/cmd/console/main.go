@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	codeStorage, err := hs.NewGitStorage(args.RepositoryURL, args.Branch, args.Path)
+	codeStorage, err := hs.NewGitStorage(args.Path)
 
 	if err != nil {
 		log.Fatal(err)

@@ -8,15 +8,9 @@ import (
 	"we-know/pkg/infrastructure/report"
 )
 
-const (
-	WrongArgumentsException = "Nothing to clone"
-)
-
 type Arguments struct {
-	RepositoryURL string
-	Branch        string
-	Path          string
-	reportType    report.ReportType
+	Path       string
+	reportType report.ReportType
 }
 
 // ReadArguments parses command line arguments and returns an Arguments struct
@@ -25,7 +19,6 @@ func ReadArguments() (*Arguments, error) {
 		reportType: report.ReportByFileUsers,
 	}
 
-	// Need at least repository URL
 	if len(os.Args) < 2 {
 		return nil, fmt.Errorf("path is required")
 	}
@@ -43,12 +36,6 @@ func ReadArguments() (*Arguments, error) {
 			}
 
 			switch arg {
-			case "--url":
-				args.RepositoryURL = os.Args[i+1]
-				i++
-			case "--branch":
-				args.Branch = os.Args[i+1]
-				i++
 			case "--type":
 				typeStr := os.Args[i+1]
 				if typeStr == "user" {
@@ -63,12 +50,6 @@ func ReadArguments() (*Arguments, error) {
 				return nil, fmt.Errorf("unknown argument: %s", arg)
 			}
 			continue
-		}
-
-		// If not an optional argument, treat as branch name
-		// (only if branch is not set yet)
-		if args.Branch == "" {
-			args.Branch = arg
 		}
 	}
 
