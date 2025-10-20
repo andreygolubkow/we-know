@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	an "we-know/pkg/infrastructure/analyzer"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
 
@@ -61,7 +62,7 @@ func TestDefaultFileCrawler_Crawl(t *testing.T) {
 	mockEditorStorage := new(MockEditorStorageTestify)
 	mockUserMapper := new(MockUserMapperTestify)
 
-	crawler := NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
+	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
 
 	// Create a mock root node
 	mockRoot := new(MockFileTreeNode)
@@ -112,7 +113,7 @@ func TestDefaultFileCrawler_Crawl_WithError(t *testing.T) {
 	mockEditorStorage := new(MockEditorStorageTestify)
 	mockUserMapper := new(MockUserMapperTestify)
 
-	crawler := NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
+	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, mockUserMapper)
 
 	// Create a mock root node
 	mockRoot := new(MockFileTreeNode)
@@ -138,7 +139,7 @@ func TestDefaultFileCrawler_Crawl_WithoutUserMapping(t *testing.T) {
 	mockEditorStorage := new(MockEditorStorageTestify)
 
 	// Create crawler without user mapping
-	crawler := NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, nil)
+	crawler := an.NewFileCrawler(mockWalker, mockCodeStorage, mockEditorStorage, nil)
 
 	// Create a mock root node
 	mockRoot := new(MockFileTreeNode)

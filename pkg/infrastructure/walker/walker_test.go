@@ -3,6 +3,7 @@ package walker
 import (
 	"errors"
 	"testing"
+	an "we-know/pkg/infrastructure/analyzer"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 )
 
@@ -298,7 +299,7 @@ func TestDefaultFileCrawler(t *testing.T) {
 		editorStorage := NewMockEditorStorage()
 
 		// Create crawler
-		crawler := NewFileCrawler(walker, codeStorage, editorStorage, userMapper)
+		crawler := an.NewFileCrawler(walker, codeStorage, editorStorage, userMapper)
 
 		// Run crawl
 		err := crawler.Crawl(&rootNode, "", nil)
@@ -345,7 +346,7 @@ func TestDefaultFileCrawler(t *testing.T) {
 		editorStorage := NewMockEditorStorage()
 
 		// Create crawler without user mapping
-		crawler := NewFileCrawler(walker, codeStorage, editorStorage, nil)
+		crawler := an.NewFileCrawler(walker, codeStorage, editorStorage, nil)
 
 		// Run crawl
 		err := crawler.Crawl(&rootNode, "", nil)

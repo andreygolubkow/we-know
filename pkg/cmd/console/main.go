@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	an "we-know/pkg/infrastructure/analyzer"
 	"we-know/pkg/infrastructure/arguments"
 	hs "we-know/pkg/infrastructure/historical_code_storage"
 	"we-know/pkg/infrastructure/report"
@@ -56,7 +57,11 @@ func main() {
 	// Populate the storage with file editors information
 	var ignoreList = []string{".git", ".idea", ".github"}
 	var pathBase = ""
-	walker.Crawl(rootPtr, codeStorage, fileEditorsStorage, pathBase, &ignoreList, userMapping)
+	fileWalker := walker.NewFileTreeWalker()
+	crawler := an.NewFileCrawler(fileWalker, codeStorage, fileEditorsStorage, userMapping)
+	if err := crawler.Crawl(rootPtr, pathBase, &ignoreList); err != nil {
+		log.Printf("Warning: crawl encountered an error: %v", err)
+	}
 
 	// Generate CSV report using the storage
 	workingDir, _ := os.Getwd()
