@@ -63,7 +63,7 @@ func main() {
 		log.Printf("Warning: collecting files encountered an error: %v", err)
 	}
 	crawler := an.NewFileCrawler(codeStorage, fileEditorsStorage, userMapping)
-	if err := crawler.AnalyzeFiles(files); err != nil {
+	if err := crawler.AnalyzeFiles(files, true); err != nil {
 		log.Printf("Warning: analysis encountered an error: %v", err)
 	}
 

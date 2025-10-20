@@ -1,5 +1,7 @@
 package crawler
 
+import "fmt"
+
 // UserMapper defines the interface for mapping user IDs to display names
 // This is used to convert raw user identifiers to human-friendly names.
 type UserMapper interface {
@@ -45,8 +47,11 @@ func NewFileCrawler(codeStorage CodeStorage, storage EditorStorage, userMapping 
 }
 
 // AnalyzeFiles iterates over file list and populates the storage with editor information
-func (c *DefaultFileCrawler) AnalyzeFiles(files []string) error {
-	for _, path := range files {
+func (c *DefaultFileCrawler) AnalyzeFiles(files []string, reportProgress bool) error {
+	for i, path := range files {
+		if reportProgress {
+			fmt.Printf("Processing file %d/%d: %s\n", i+1, len(files), path)
+		}
 		editors, errorMsg := c.codeStorage.GetEditorsByFile(path)
 
 		// If we have editors and user mapping, apply the mapping
