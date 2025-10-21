@@ -49,7 +49,7 @@ func TestDefaultFileCrawler_AnalyzeFiles(t *testing.T) {
 	mockEditorStorage := new(MockEditorStorageTestify)
 	mockUserMapper := new(MockUserMapperTestify)
 
-	crawler := an.NewFileCrawler(mockCodeStorage, mockEditorStorage, mockUserMapper)
+	crawler := an.NewFileCrawlerWithConcurrency(mockCodeStorage, mockEditorStorage, mockUserMapper, 1)
 
 	// Set up code storage to return editors for the test path
 	editors := map[string]int{
@@ -71,7 +71,7 @@ func TestDefaultFileCrawler_AnalyzeFiles(t *testing.T) {
 		})
 
 	// Act
-	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"}, false)
 
 	// Assert
 	assert.NoError(t, err, "AnalyzeFiles should not return an error")
@@ -93,7 +93,7 @@ func TestDefaultFileCrawler_AnalyzeFiles_WithStorageError(t *testing.T) {
 	mockEditorStorage.On("SetFileEditors", "base/file.txt", (*map[string]int)(nil), "test error")
 
 	// Act
-	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"}, false)
 
 	// Assert
 	assert.NoError(t, err)
@@ -120,7 +120,7 @@ func TestDefaultFileCrawler_AnalyzeFiles_WithoutUserMapping(t *testing.T) {
 	mockEditorStorage.On("SetFileEditors", "base/file.txt", &editors, "")
 
 	// Act
-	err := crawler.AnalyzeFiles([]string{"base/file.txt"})
+	err := crawler.AnalyzeFiles([]string{"base/file.txt"}, false)
 
 	// Assert
 	assert.NoError(t, err, "AnalyzeFiles should not return an error")

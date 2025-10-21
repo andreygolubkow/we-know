@@ -1,6 +1,11 @@
 package crawler
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+	"sync"
+	"sync/atomic"
+)
 
 // UserMapper defines the interface for mapping user IDs to display names
 // This is used to convert raw user identifiers to human-friendly names.
@@ -35,34 +40,94 @@ type DefaultFileCrawler struct {
 	codeStorage CodeStorage
 	storage     EditorStorage
 	userMapping UserMapper
+	concurrency int
+	storageMu   sync.Mutex
 }
 
 // NewFileCrawler creates a new analyzer that works on a list of file paths.
 func NewFileCrawler(codeStorage CodeStorage, storage EditorStorage, userMapping UserMapper) *DefaultFileCrawler {
+	c := &DefaultFileCrawler{
+		codeStorage: codeStorage,
+		storage:     storage,
+		userMapping: userMapping,
+		concurrency: runtime.NumCPU(),
+	}
+	if c.concurrency < 1 {
+		c.concurrency = 1
+	}
+	return c
+}
+
+// NewFileCrawlerWithConcurrency creates a new analyzer with an explicit concurrency level.
+func NewFileCrawlerWithConcurrency(codeStorage CodeStorage, storage EditorStorage, userMapping UserMapper, concurrency int) *DefaultFileCrawler {
+	if concurrency < 1 {
+		concurrency = 1
+	}
 	return &DefaultFileCrawler{
 		codeStorage: codeStorage,
 		storage:     storage,
 		userMapping: userMapping,
+		concurrency: concurrency,
 	}
 }
 
 // AnalyzeFiles iterates over file list and populates the storage with editor information
 func (c *DefaultFileCrawler) AnalyzeFiles(files []string, reportProgress bool) error {
-	for i, path := range files {
-		if reportProgress {
-			fmt.Printf("Processing file %d/%d: %s\n", i+1, len(files), path)
+	// Fast path: sequential processing when concurrency is 1 or there is <=1 file
+	if c.concurrency <= 1 || len(files) <= 1 {
+		for i, path := range files {
+			if reportProgress {
+				fmt.Printf("Processing file %d/%d: %s\n", i+1, len(files), path)
+			}
+			c.processOne(path)
 		}
-		editors, errorMsg := c.codeStorage.GetEditorsByFile(path)
+		return nil
+	}
 
-		// If we have editors and user mapping, apply the mapping
-		if editors != nil && c.userMapping != nil {
-			mappedEditors := c.mapEditors(*editors)
-			c.storage.SetFileEditors(path, &mappedEditors, errorMsg)
-		} else {
-			c.storage.SetFileEditors(path, editors, errorMsg)
+	// Concurrent processing with a bounded worker pool
+	jobs := make(chan string, c.concurrency*2)
+	var wg sync.WaitGroup
+	var processed int64
+	total := int64(len(files))
+
+	worker := func() {
+		defer wg.Done()
+		for path := range jobs {
+			if reportProgress {
+				cur := atomic.AddInt64(&processed, 1)
+				fmt.Printf("Processing file %d/%d: %s\n", cur, total, path)
+			}
+			c.processOne(path)
 		}
 	}
+
+	workers := c.concurrency
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go worker()
+	}
+	for _, path := range files {
+		jobs <- path
+	}
+	close(jobs)
+	wg.Wait()
 	return nil
+}
+
+// processOne performs analysis for a single file path and stores the result safely.
+func (c *DefaultFileCrawler) processOne(path string) {
+	editors, errorMsg := c.codeStorage.GetEditorsByFile(path)
+
+	if editors != nil && c.userMapping != nil {
+		mappedEditors := c.mapEditors(*editors)
+		c.storageMu.Lock()
+		c.storage.SetFileEditors(path, &mappedEditors, errorMsg)
+		c.storageMu.Unlock()
+		return
+	}
+	c.storageMu.Lock()
+	c.storage.SetFileEditors(path, editors, errorMsg)
+	c.storageMu.Unlock()
 }
 
 // mapEditors maps user IDs to display names in the editors map

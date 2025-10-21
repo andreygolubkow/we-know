@@ -299,11 +299,11 @@ func TestDefaultFileCrawler(t *testing.T) {
 		editorStorage := NewMockEditorStorage()
 
 		// Create crawler
-		crawler := an.NewFileCrawler(codeStorage, editorStorage, userMapper)
+		crawler := an.NewFileCrawlerWithConcurrency(codeStorage, editorStorage, userMapper, 1)
 
 		// Collect files via walker and analyze
 		files, _ := walker.CollectFiles(&rootNode, "", nil)
-		err := crawler.AnalyzeFiles(files)
+		err := crawler.AnalyzeFiles(files, false)
 
 		// Check results
 		if err != nil {
@@ -347,11 +347,11 @@ func TestDefaultFileCrawler(t *testing.T) {
 		editorStorage := NewMockEditorStorage()
 
 		// Create crawler without user mapping
-		crawler := an.NewFileCrawler(codeStorage, editorStorage, nil)
+		crawler := an.NewFileCrawlerWithConcurrency(codeStorage, editorStorage, nil, 1)
 
 		// Collect files via walker and analyze
 		files, _ := walker.CollectFiles(&rootNode, "", nil)
-		err := crawler.AnalyzeFiles(files)
+		err := crawler.AnalyzeFiles(files, false)
 
 		// Check results
 		if err != nil {
