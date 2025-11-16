@@ -1,0 +1,15 @@
+# Пример конфигурации для feature-metrics
+
+# Путь к git-репозиторию, который будем анализировать
+repo_path: "/path/to/your/repo"
+
+# Префикс ID задач в коммитах, например "PROJ-" или "SP-"
+issue_prefix: "PROJ-"
+
+# Тип трекера: azure-devops, jira, none
+tracker: "azure-devops"
+
+azure_devops:
+  organization: "MyOrg"
+  project: "MuProject"
+  token: "YOUR_PAT_HERE"  # лучше потом держать в ENV, а не в файле :)

@@ -1,8 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run console(user)" type="GoApplicationRunConfiguration" factoryName="Go Application">
+  <configuration default="false" name="go build github.com/andreygolubkow/we-know" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
     <module name="we-know" />
-    <working_directory value="$PROJECT_DIR$/bin" />
-    <parameters value="./tmp --type user" />
+    <working_directory value="$PROJECT_DIR$" />
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
       <option name="IS_SUBST" value="false" />
@@ -14,9 +13,9 @@
       </ENTRIES>
     </EXTENSION>
     <kind value="PACKAGE" />
-    <package value="we-know/pkg/cmd/console" />
+    <package value="github.com/andreygolubkow/we-know" />
     <directory value="$PROJECT_DIR$" />
-    <filePath value="$PROJECT_DIR$/pkg/cmd/console/main.go" />
+    <filePath value="$PROJECT_DIR$" />
     <method v="2" />
   </configuration>
 </component>
