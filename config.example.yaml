@@ -13,3 +13,6 @@ azure_devops:
   organization: "MyOrg"
   project: "MuProject"
   token: "YOUR_PAT_HERE"  # лучше потом держать в ENV, а не в файле :)
+
+db:
+  path: "./we-know.db"

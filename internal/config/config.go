@@ -7,6 +7,11 @@ type Config struct {
 	IssuePrefix string            `mapstructure:"issue_prefix"`
 	Tracker     string            `mapstructure:"tracker"`
 	AzureDevOps AzureDevOpsConfig `mapstructure:"azure_devops"`
+	DB          DBConfig          `mapstructure:"db"`
+}
+
+type DBConfig struct {
+	Path string `mapstructure:"path"`
 }
 
 type AzureDevOpsConfig struct {
@@ -19,6 +24,10 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, err
+	}
+
+	if cfg.DB.Path == "" {
+		cfg.DB.Path = "we-know.db"
 	}
 
 	return &cfg, nil

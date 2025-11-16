@@ -5,13 +5,16 @@ import (
 	"os"
 
 	"github.com/andreygolubkow/we-know/internal/config"
+	"github.com/andreygolubkow/we-know/internal/storage"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgFile string
-	rootCmd = &cobra.Command{
+	cfgFile   string
+	appConfig *config.Config
+	store     *storage.Store
+	rootCmd   = &cobra.Command{
 		Use:   "we-know",
 		Short: "Just trying to understand what is going on",
 		Long:  `we-know - the tool which helps you to understand what is going on in your codebase`,
@@ -57,10 +60,17 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	if _, err := config.Load(); err != nil {
-		fmt.Fprintf(os.Stderr, "❌ Error whilie parsing config file: %v\n", err)
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Error while parsing config file: %v\n", err)
 		os.Exit(1)
 	}
+	appConfig = cfg
 
-	fmt.Printf("✅ Using config: %s\n", viper.ConfigFileUsed())
+	s, err := storage.New(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Error DB loading: %v\n", err)
+		os.Exit(1)
+	}
+	store = s
 }
