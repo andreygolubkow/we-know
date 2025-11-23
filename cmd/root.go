@@ -35,6 +35,8 @@ func init() {
 		"",
 		"path to config file (example, ./we-know.yaml)",
 	)
+
+	rootCmd.AddCommand(analyzeCommand())
 }
 
 func initConfig() {

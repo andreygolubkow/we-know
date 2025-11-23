@@ -4,6 +4,7 @@ import "github.com/spf13/viper"
 
 type Config struct {
 	RepoPath    string            `mapstructure:"repo_path"`
+	ProjectName string            `mapstructure:"project_name"`
 	IssuePrefix string            `mapstructure:"issue_prefix"`
 	Tracker     string            `mapstructure:"tracker"`
 	AzureDevOps AzureDevOpsConfig `mapstructure:"azure_devops"`

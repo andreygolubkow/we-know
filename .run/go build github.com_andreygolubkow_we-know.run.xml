@@ -2,6 +2,7 @@
   <configuration default="false" name="go build github.com/andreygolubkow/we-know" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
     <module name="we-know" />
     <working_directory value="$PROJECT_DIR$" />
+    <parameters value="analyze-git" />
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="false" />
       <option name="IS_SUBST" value="false" />

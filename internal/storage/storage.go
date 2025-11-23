@@ -3,7 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"time"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -14,14 +14,16 @@ type Store struct {
 	db *sql.DB
 }
 
-type AnalysisRecord struct {
-	ID               int64
-	FeatureID        string
-	AnalyzedAt       time.Time
-	FilesChanged     int
-	LocAdded         int
-	LocDeleted       int
-	MonolithsTouched int
+type Features struct {
+	Id        int64
+	FeatureID string
+	FileId    int64
+}
+
+type Files struct {
+	Id          int64
+	ProjectName string
+	Path        string
 }
 
 func New(cfg *config.Config) (*Store, error) {
@@ -51,23 +53,29 @@ func New(cfg *config.Config) (*Store, error) {
 
 func migrate(db *sql.DB) error {
 	schema := `
-CREATE TABLE IF NOT EXISTS analyses (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    feature_id         TEXT NOT NULL,
-    analyzed_at        DATETIME NOT NULL,
-    files_changed      INTEGER NOT NULL,
-    loc_added          INTEGER NOT NULL,
-    loc_deleted        INTEGER NOT NULL,
-    monoliths_touched  INTEGER NOT NULL
+CREATE TABLE IF NOT EXISTS files (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    UNIQUE(project_name, path)
 );
 
-CREATE INDEX IF NOT EXISTS idx_analyses_feature_id
-    ON analyses(feature_id);
+CREATE TABLE IF NOT EXISTS features (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    feature_id TEXT NOT NULL,
+    file_id    INTEGER NOT NULL,
+    FOREIGN KEY(file_id) REFERENCES files(id),
+    UNIQUE(feature_id, file_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_features_feature_id
+    ON features(feature_id);
+
+CREATE INDEX IF NOT EXISTS idx_features_file_id
+    ON features(file_id);
 `
-	if _, err := db.Exec(schema); err != nil {
-		return err
-	}
-	return nil
+	_, err := db.Exec(schema)
+	return err
 }
 
 // Close — закрыть БД.
@@ -78,28 +86,67 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-func (s *Store) SaveAnalysis(a *AnalysisRecord) error {
-	if a.AnalyzedAt.IsZero() {
-		a.AnalyzedAt = time.Now()
+func (s *Store) AppendAnalysis(featureID string, projectName string, changedFiles []string) (err error) {
+	if featureID == "" {
+		return fmt.Errorf("featureID is empty")
+	}
+	if projectName == "" {
+		return fmt.Errorf("projectName is empty")
+	}
+	if len(changedFiles) == 0 {
+		return nil
 	}
 
-	res, err := s.db.Exec(
-		`INSERT INTO analyses (feature_id, analyzed_at, files_changed, loc_added, loc_deleted, monoliths_touched)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-		a.FeatureID,
-		a.AnalyzedAt,
-		a.FilesChanged,
-		a.LocAdded,
-		a.LocDeleted,
-		a.MonolithsTouched,
-	)
+	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("insert analysis: %w", err)
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	for _, path := range changedFiles {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+
+		// 1) вставляем файл (или игнорируем, если уже есть такой project_name+path)
+		_, err = tx.Exec(
+			`INSERT OR IGNORE INTO files (project_name, path) VALUES (?, ?)`,
+			projectName,
+			path,
+		)
+		if err != nil {
+			return fmt.Errorf("insert file %q (%s): %w", path, projectName, err)
+		}
+
+		// 2) получаем id файла по project_name + path
+		var fileID int64
+		err = tx.QueryRow(
+			`SELECT id FROM files WHERE project_name = ? AND path = ?`,
+			projectName,
+			path,
+		).Scan(&fileID)
+		if err != nil {
+			return fmt.Errorf("select file id for %q (%s): %w", path, projectName, err)
+		}
+
+		// 3) создаем связь feature ↔ file
+		_, err = tx.Exec(
+			`INSERT OR IGNORE INTO features (feature_id, file_id) VALUES (?, ?)`,
+			featureID,
+			fileID,
+		)
+		if err != nil {
+			return fmt.Errorf("insert feature-file link %q/%d: %w", featureID, fileID, err)
+		}
 	}
 
-	id, err := res.LastInsertId()
-	if err == nil {
-		a.ID = id
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
 	}
 
 	return nil
